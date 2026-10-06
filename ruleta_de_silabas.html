@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ruleta de Sílabas</title>
+<style>
+  :root{
+    --teal:#1A7A6E; --teal-dark:#125b52; --bg:#FBFAF6; --text:#14322D;
+    --mint:#A8E0C8; --yellow:#F5D97A; --blue:#A8CDE8; --orange:#F5B682; --violet:#C9AEDC;
+    --success:#2E9E5B; --invent:#B9862E;
+    padding-top: env(safe-area-inset-top,0px); padding-bottom: env(safe-area-inset-bottom,0px);
+    box-sizing:border-box;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%; overflow-x:hidden; max-width:100%;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
+    min-height:100%; display:flex; flex-direction:column;
+  }
+  .screen{ display:none; flex-direction:column; align-items:center; padding:24px 16px 40px; flex:1; }
+  .screen.active{ display:flex; }
+  h1{ color:var(--teal); font-size:2.2rem; text-align:center; margin:8px 0 4px; }
+  h2{ color:var(--teal-dark); font-size:1.4rem; margin:0 0 12px; text-align:center;}
+  .instr{ font-size:1.15rem; text-align:center; max-width:480px; margin:0 auto 20px; color:var(--text); }
+  .bar{
+    position:sticky; top:0; width:100%; background:var(--teal); color:#fff;
+    padding:14px 16px calc(14px + env(safe-area-inset-top,0px));
+    text-align:center; font-size:1.15rem; font-weight:600; z-index:5;
+  }
+  .card{
+    background:#fff; border:3px solid var(--teal); border-radius:20px;
+    padding:20px; max-width:520px; width:100%; margin:14px 0;
+  }
+  button{
+    font-family:inherit; font-size:1.15rem; font-weight:700; cursor:pointer;
+    border:none; border-radius:16px; padding:16px 22px; min-height:56px;
+    touch-action:manipulation;
+  }
+  .btn-primary{ background:var(--teal); color:#fff; }
+  .btn-primary:active{ background:var(--teal-dark); }
+  .btn-primary:disabled{ background:#B7C9C6; cursor:not-allowed; }
+  .btn-secondary{ background:#fff; color:var(--teal); border:3px solid var(--teal); }
+  .level-row{ display:flex; gap:16px; flex-wrap:wrap; justify-content:center; margin:16px 0 28px; }
+  .level-card{
+    border:4px solid var(--blue); border-radius:18px; background:#fff;
+    padding:18px 20px; font-size:1.2rem; font-weight:700; color:var(--teal-dark);
+    cursor:pointer; min-width:150px; text-align:center;
+  }
+  .level-card.selected{ border-color:var(--teal); background:var(--mint); }
+  .wheel-block{ display:flex; flex-direction:row; align-items:center; justify-content:center; gap:10px; margin:14px 0; }
+  .wheel-side{ display:flex; flex-direction:row; align-items:center; gap:8px; }
+  .wheel-label{ font-weight:700; color:var(--teal-dark); font-size:1.05rem; text-transform:uppercase; text-align:right; max-width:90px; line-height:1.15; }
+  .pointer-left{
+    width:0; height:0; flex:none;
+    border-top:12px solid transparent; border-bottom:12px solid transparent;
+    border-left:20px solid var(--teal-dark);
+  }
+  .wheel-wrap{ position:relative; width:240px; height:240px; margin:6px 0; }
+  .wheel{
+    width:240px; height:240px; border-radius:50%; position:relative;
+    border:5px solid var(--teal-dark); overflow:hidden;
+    transition: transform 1.4s cubic-bezier(.17,.67,.2,1);
+  }
+  .wheel::after{
+    content:""; position:absolute; inset:0; border-radius:50%; pointer-events:none;
+    background:repeating-conic-gradient(from -0.6deg, rgba(20,50,45,.45) 0deg 1.2deg, transparent 1.2deg 45deg);
+  }
+  .wheel span{
+    position:absolute; top:50%; left:50%; width:64px; height:32px; margin:-16px 0 0 -32px;
+    display:flex; align-items:center; justify-content:center; z-index:1;
+    font-weight:800; font-size:1rem; color:var(--teal-dark);
+    white-space:nowrap;
+  }
+  .wheel span b{
+    display:block; line-height:1; text-align:center;
+    transition: transform 1.4s cubic-bezier(.17,.67,.2,1);
+  }
+  .spin-btn{ background:var(--orange); color:#3a2705; margin-top:8px; }
+  .word-display{
+    text-align:center; margin:14px 0; min-height:70px; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  }
+  .word-display .lbl{ font-size:1rem; color:var(--teal-dark); font-weight:600;}
+  .word-big{ font-size:2.4rem; font-weight:800; color:var(--teal); letter-spacing:1px; min-height:48px;}
+  .choice-row{ display:flex; gap:14px; justify-content:center; flex-wrap:wrap; margin:10px 0 4px; }
+  .btn-real{ background:var(--success); color:#fff; }
+  .btn-invent{ background:var(--invent); color:#fff; }
+  .btn-real:disabled,.btn-invent:disabled{ background:#D8D8D8; color:#888; cursor:not-allowed; }
+  .counter{ font-size:1.05rem; font-weight:700; color:var(--teal-dark); margin:6px 0 2px;}
+  .history{ width:100%; max-width:480px; margin-top:6px; }
+  .chip{
+    display:flex; align-items:center; gap:8px; background:#fff; border:2px solid #DDE6E4;
+    border-radius:12px; padding:10px 14px; margin-bottom:8px; font-size:1.05rem;
+  }
+  .chip .icon{ font-size:1.3rem; }
+  .chip.real{ border-color:var(--success); }
+  .chip.invent{ border-color:var(--invent); }
+  .finish{ margin-top:18px; }
+  .stats{ display:flex; gap:14px; flex-wrap:wrap; justify-content:center; margin:18px 0; }
+  .stat{ background:#fff; border:3px solid var(--teal); border-radius:16px; padding:16px 22px; text-align:center; min-width:120px;}
+  .stat .n{ font-size:2rem; font-weight:800; color:var(--teal);}
+  .stat .t{ font-size:0.95rem; color:var(--teal-dark); font-weight:600;}
+  footer.logo{ margin-top:auto; font-size:0.85rem; color:#8AA39D; text-align:center; padding-top:20px;}
+
+  @media (max-width: 480px){
+    .screen{ padding:16px 10px 32px; }
+    .card{ padding:14px; }
+    .wheel-block{ flex-direction:column; gap:4px; }
+    .wheel-side{ justify-content:center; }
+    .wheel-label{ text-align:center; max-width:none; }
+    .pointer-left{ transform:rotate(90deg); }
+    .word-big{ font-size:1.9rem; overflow-wrap:break-word; max-width:100%; }
+  }
+</style>
+</head>
+<body>
+
+<!-- PANTALLA 1: INICIO -->
+<div class="screen active" id="screen-inicio">
+  <h1>Ruleta de Sílabas</h1>
+  <p class="instr">Elegí el nivel y apretá "Empezar" para armar palabras girando las ruedas.</p>
+  <div class="level-row" id="levelRow">
+    <div class="level-card selected" data-level="1">Nivel 1<br><span style="font-weight:500;font-size:0.95rem;">Sílabas simples</span></div>
+    <div class="level-card" data-level="2">Nivel 2<br><span style="font-weight:500;font-size:0.95rem;">Sílabas más difíciles</span></div>
+  </div>
+  <button class="btn-primary" id="btnStart">Empezar</button>
+  <footer class="logo">Fundación TISE</footer>
+</div>
+
+<!-- PANTALLA 2: JUEGO -->
+<div class="screen" id="screen-juego">
+  <div class="bar">Girá las dos ruedas y armá una palabra</div>
+  <div class="card">
+    <div class="wheel-block">
+      <div class="wheel-side">
+        <div class="wheel-label">SÍLABA INICIAL</div>
+        <div class="pointer-left"></div>
+      </div>
+      <div class="wheel-wrap"><div class="wheel" id="wheelTop"></div></div>
+    </div>
+    <button class="spin-btn" id="spinTop">Girar</button>
+
+    <div class="wheel-block">
+      <div class="wheel-side">
+        <div class="wheel-label">SÍLABA FINAL</div>
+        <div class="pointer-left"></div>
+      </div>
+      <div class="wheel-wrap"><div class="wheel" id="wheelBottom"></div></div>
+    </div>
+    <button class="spin-btn" id="spinBottom">Girar</button>
+
+    <div class="word-display">
+      <div class="lbl">Se forma:</div>
+      <div class="word-big" id="wordBig">—</div>
+    </div>
+
+    <div class="choice-row">
+      <button class="btn-real" id="btnReal" disabled>✅ Es una palabra real</button>
+      <button class="btn-invent" id="btnInvent" disabled>💡 Es inventada</button>
+    </div>
+  </div>
+
+  <div class="counter" id="counter">Palabras formadas: 0</div>
+  <div class="history" id="history"></div>
+
+  <button class="btn-primary finish" id="btnFinish">Terminar actividad</button>
+</div>
+
+<!-- PANTALLA 3: CIERRE -->
+<div class="screen" id="screen-cierre">
+  <h1>¡Listo!</h1>
+  <h2 id="cierreSub">Así te fue con la ruleta</h2>
+  <div class="stats">
+    <div class="stat"><div class="n" id="statTotal">0</div><div class="t">Palabras<br>formadas</div></div>
+    <div class="stat"><div class="n" id="statReal">0</div><div class="t">Reales</div></div>
+    <div class="stat"><div class="n" id="statInvent">0</div><div class="t">Inventadas</div></div>
+  </div>
+  <button class="btn-primary" id="btnAgain">Jugar de nuevo</button>
+  <footer class="logo">Fundación TISE</footer>
+</div>
+
+<script>
+const DATA = {
+  1: {
+    top: ["MA","PE","LO","SI","TA","RE","NI","CA"],
+    bottom: ["NO","RA","BO","LLA","ZA","MO","DO","SA"]
+  },
+  2: {
+    top: ["PLA","CLA","BRA","TRI","GRI","FLO","PRE","DRA"],
+    bottom: ["YA","VO","ZO","GO","TO","TA","SA","GON"]
+  }
+};
+const COLORS = ["#A8E0C8","#F5D97A","#A8CDE8","#A8E0C8","#F5B682","#A8CDE8","#C9AEDC","#F5D97A"];
+
+let state = { level:1, top:null, bottom:null, words:[] };
+
+function buildWheel(el, labels){
+  el.innerHTML = "";
+  const n = labels.length;
+  const step = 360/n;
+  let gradientParts = [];
+  for(let i=0;i<n;i++){
+    gradientParts.push(`${COLORS[i%COLORS.length]} ${i*step}deg ${(i+1)*step}deg`);
+  }
+  el.style.background = `conic-gradient(${gradientParts.join(",")})`;
+  // reset sin animación
+  el.style.transition = "none";
+  el.style.transform = "rotate(0deg)";
+  el._rot = 0;
+  for(let i=0;i<n;i++){
+    const angle = i*step + step/2;
+    const span = document.createElement("span");
+    // la caja de la etiqueta queda centrada en el punto medio de su porción (radio 78px)
+    span.style.transform = `rotate(${angle}deg) translate(0,-78px)`;
+    const b = document.createElement("b");
+    b.style.transition = "none";
+    b.style.transform = `rotate(${-angle}deg)`; // contra-rotación: texto siempre derecho
+    b.dataset.angle = angle;
+    b.textContent = labels[i];
+    span.appendChild(b);
+    el.appendChild(span);
+  }
+  void el.offsetWidth; // fuerza reflow y reactiva las transiciones
+  el.style.transition = "";
+  el.querySelectorAll("b").forEach(b=>{ b.style.transition = ""; });
+}
+
+function spinWheel(el, labels, cb){
+  const n = labels.length;
+  const step = 360/n;
+  const targetIndex = Math.floor(Math.random()*n);
+  const pointerAngle = 270; // flecha a la izquierda del disco
+  const center = targetIndex*step + step/2;
+  const cur = el._rot || 0;
+  const delta = (((pointerAngle - center - cur) % 360) + 360) % 360;
+  const newRot = cur + 5*360 + delta;
+  el._rot = newRot;
+  el.style.transform = `rotate(${newRot}deg)`;
+  // cada sílaba se contra-rota con el mismo tiempo/curva: queda siempre derecha
+  el.querySelectorAll("b").forEach(b=>{
+    b.style.transform = `rotate(${-(parseFloat(b.dataset.angle) + newRot)}deg)`;
+  });
+  setTimeout(()=> cb(labels[targetIndex]), 1450);
+}
+
+function updateWord(){
+  const w = document.getElementById("wordBig");
+  if(state.top && state.bottom){
+    w.textContent = (state.top + state.bottom).charAt(0) + (state.top+state.bottom).slice(1).toLowerCase();
+    document.getElementById("btnReal").disabled = false;
+    document.getElementById("btnInvent").disabled = false;
+  } else {
+    w.textContent = "—";
+  }
+}
+
+function renderHistory(){
+  const hist = document.getElementById("history");
+  hist.innerHTML = "";
+  state.words.slice().reverse().forEach(item=>{
+    const chip = document.createElement("div");
+    chip.className = "chip " + (item.real ? "real" : "invent");
+    chip.innerHTML = `<span class="icon">${item.real ? "✅" : "💡"}</span><span>${item.word} — ${item.real ? "palabra real" : "inventada"}</span>`;
+    hist.appendChild(chip);
+  });
+  document.getElementById("counter").textContent = "Palabras formadas: " + state.words.length;
+}
+
+function goScreen(id){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+
+// INICIO
+document.getElementById("levelRow").addEventListener("click", (e)=>{
+  const card = e.target.closest(".level-card");
+  if(!card) return;
+  document.querySelectorAll(".level-card").forEach(c=>c.classList.remove("selected"));
+  card.classList.add("selected");
+  state.level = parseInt(card.dataset.level);
+});
+
+document.getElementById("btnStart").addEventListener("click", ()=>{
+  startGame();
+});
+
+function startGame(){
+  state.top = null; state.bottom = null; state.words = [];
+  const d = DATA[state.level];
+  const wt = document.getElementById("wheelTop");
+  const wb = document.getElementById("wheelBottom");
+  wt.dataset.rot = 0; wb.dataset.rot = 0;
+  buildWheel(wt, d.top);
+  buildWheel(wb, d.bottom);
+  updateWord();
+  renderHistory();
+  goScreen("screen-juego");
+}
+
+// JUEGO
+document.getElementById("spinTop").addEventListener("click", ()=>{
+  spinWheel(document.getElementById("wheelTop"), DATA[state.level].top, (label)=>{
+    state.top = label;
+    updateWord();
+  });
+});
+document.getElementById("spinBottom").addEventListener("click", ()=>{
+  spinWheel(document.getElementById("wheelBottom"), DATA[state.level].bottom, (label)=>{
+    state.bottom = label;
+    updateWord();
+  });
+});
+
+function registerWord(isReal){
+  if(!state.top || !state.bottom) return;
+  const word = state.top + state.bottom;
+  state.words.push({word: word.charAt(0)+word.slice(1).toLowerCase(), real:isReal});
+  state.top = null; state.bottom = null;
+  updateWord();
+  renderHistory();
+}
+document.getElementById("btnReal").addEventListener("click", ()=>registerWord(true));
+document.getElementById("btnInvent").addEventListener("click", ()=>registerWord(false));
+
+document.getElementById("btnFinish").addEventListener("click", ()=>{
+  const total = state.words.length;
+  const reales = state.words.filter(w=>w.real).length;
+  const inventadas = total - reales;
+  document.getElementById("statTotal").textContent = total;
+  document.getElementById("statReal").textContent = reales;
+  document.getElementById("statInvent").textContent = inventadas;
+  document.getElementById("cierreSub").textContent = total===0 ? "Todavía no formaste palabras" : "Así te fue con la ruleta";
+  goScreen("screen-cierre");
+});
+
+document.getElementById("btnAgain").addEventListener("click", ()=>{
+  goScreen("screen-inicio");
+});
+</script>
+</body>
+</html>
