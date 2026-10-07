@@ -81,6 +81,8 @@
     display:block; background:var(--orange); color:#3a2705;
     width:80%; max-width:320px; margin:8px auto 18px; text-align:center;
   }
+  .wide-btn{ display:block; width:80%; max-width:320px; margin:10px auto; text-align:center; }
+  .result-note{ font-size:1rem; color:var(--teal-dark); text-align:center; max-width:420px; margin:0 auto 6px; }
   .word-display{
     text-align:center; margin:14px 0; min-height:70px; display:flex; flex-direction:column; align-items:center; justify-content:center;
   }
@@ -127,13 +129,13 @@
     <div class="level-card selected" data-level="1">Nivel 1<br><span style="font-weight:500;font-size:0.95rem;">Sílabas simples</span></div>
     <div class="level-card" data-level="2">Nivel 2<br><span style="font-weight:500;font-size:0.95rem;">Sílabas más difíciles</span></div>
   </div>
-  <button class="btn-primary" id="btnStart">Empezar</button>
+  <button class="btn-primary" id="btnStart">Comenzar</button>
   <footer class="logo">Fundación TISE</footer>
 </div>
 
-<!-- PANTALLA 2: JUEGO -->
-<div class="screen" id="screen-juego">
-  <div class="bar">Girá las dos ruedas y armá una palabra</div>
+<!-- PANTALLA 2: PRIMERA RUEDA -->
+<div class="screen" id="screen-rueda1">
+  <div class="bar">Girá la primera rueda</div>
   <div class="card">
     <div class="wheel-block">
       <div class="wheel-side">
@@ -143,7 +145,18 @@
       <div class="wheel-wrap"><div class="wheel" id="wheelTop"></div></div>
     </div>
     <button class="spin-btn" id="spinTop">Girar</button>
+    <div class="word-display">
+      <div class="lbl">Salió:</div>
+      <div class="word-big" id="resultTop">—</div>
+    </div>
+  </div>
+  <button class="btn-primary wide-btn" id="btnNext1" disabled>Siguiente</button>
+</div>
 
+<!-- PANTALLA 3: SEGUNDA RUEDA -->
+<div class="screen" id="screen-rueda2">
+  <div class="bar">Girá la segunda rueda</div>
+  <div class="card">
     <div class="wheel-block">
       <div class="wheel-side">
         <div class="wheel-label">SÍLABA FINAL</div>
@@ -152,22 +165,34 @@
       <div class="wheel-wrap"><div class="wheel" id="wheelBottom"></div></div>
     </div>
     <button class="spin-btn" id="spinBottom">Girar</button>
+    <div class="word-display">
+      <div class="lbl">Salió:</div>
+      <div class="word-big" id="resultBottom">—</div>
+    </div>
+  </div>
+  <button class="btn-primary wide-btn" id="btnNext2" disabled>Siguiente</button>
+</div>
 
+<!-- PANTALLA 4: RESULTADO -->
+<div class="screen" id="screen-resultado">
+  <div class="bar">¿Qué palabra se formó?</div>
+  <div class="card">
     <div class="word-display">
       <div class="lbl">Se forma:</div>
       <div class="word-big" id="wordBig">—</div>
     </div>
-
     <div class="choice-row">
-      <button class="btn-real" id="btnReal" disabled>✅ Es una palabra real</button>
-      <button class="btn-invent" id="btnInvent" disabled>💡 Es inventada</button>
+      <button class="btn-real" id="btnReal">✅ Es una palabra real</button>
+      <button class="btn-invent" id="btnInvent">💡 Es inventada</button>
     </div>
+    <div class="result-note" id="resultNote"></div>
   </div>
 
   <div class="counter" id="counter">Palabras formadas: 0</div>
   <div class="history" id="history"></div>
 
-  <button class="btn-primary finish" id="btnFinish">Terminar actividad</button>
+  <button class="btn-secondary wide-btn" id="btnBackToWheel">Volver a la primera rueda</button>
+  <button class="btn-primary wide-btn" id="btnFinish">Terminar actividad</button>
 </div>
 
 <!-- PANTALLA 3: CIERRE -->
@@ -253,9 +278,7 @@ function spinWheel(el, labels, cb){
 function updateWord(){
   const w = document.getElementById("wordBig");
   if(state.top && state.bottom){
-    w.textContent = (state.top + state.bottom).charAt(0) + (state.top+state.bottom).slice(1).toLowerCase();
-    document.getElementById("btnReal").disabled = false;
-    document.getElementById("btnInvent").disabled = false;
+    w.textContent = (state.top + state.bottom).toUpperCase();
   } else {
     w.textContent = "—";
   }
@@ -296,38 +319,67 @@ function startGame(){
   const d = DATA[state.level];
   const wt = document.getElementById("wheelTop");
   const wb = document.getElementById("wheelBottom");
-  wt.dataset.rot = 0; wb.dataset.rot = 0;
   buildWheel(wt, d.top);
   buildWheel(wb, d.bottom);
-  updateWord();
+  resetRoundUI();
   renderHistory();
-  goScreen("screen-juego");
+  goScreen("screen-rueda1");
 }
 
-// JUEGO
+function resetRoundUI(){
+  document.getElementById("resultTop").textContent = "—";
+  document.getElementById("resultBottom").textContent = "—";
+  document.getElementById("btnNext1").disabled = true;
+  document.getElementById("btnNext2").disabled = true;
+  document.getElementById("btnReal").disabled = false;
+  document.getElementById("btnInvent").disabled = false;
+  document.getElementById("resultNote").textContent = "";
+  updateWord();
+}
+
+// PANTALLA 2: PRIMERA RUEDA
 document.getElementById("spinTop").addEventListener("click", ()=>{
   spinWheel(document.getElementById("wheelTop"), DATA[state.level].top, (label)=>{
     state.top = label;
-    updateWord();
+    document.getElementById("resultTop").textContent = label;
+    document.getElementById("btnNext1").disabled = false;
   });
 });
+document.getElementById("btnNext1").addEventListener("click", ()=>{
+  goScreen("screen-rueda2");
+});
+
+// PANTALLA 3: SEGUNDA RUEDA
 document.getElementById("spinBottom").addEventListener("click", ()=>{
   spinWheel(document.getElementById("wheelBottom"), DATA[state.level].bottom, (label)=>{
     state.bottom = label;
-    updateWord();
+    document.getElementById("resultBottom").textContent = label;
+    document.getElementById("btnNext2").disabled = false;
   });
 });
+document.getElementById("btnNext2").addEventListener("click", ()=>{
+  updateWord();
+  goScreen("screen-resultado");
+});
 
+// PANTALLA 4: RESULTADO
 function registerWord(isReal){
   if(!state.top || !state.bottom) return;
   const word = state.top + state.bottom;
-  state.words.push({word: word.charAt(0)+word.slice(1).toLowerCase(), real:isReal});
-  state.top = null; state.bottom = null;
-  updateWord();
+  state.words.push({word: word.toUpperCase(), real:isReal});
   renderHistory();
+  document.getElementById("btnReal").disabled = true;
+  document.getElementById("btnInvent").disabled = true;
+  document.getElementById("resultNote").textContent = "¡Guardada! Tocá \"Volver a la primera rueda\" para formar otra.";
 }
 document.getElementById("btnReal").addEventListener("click", ()=>registerWord(true));
 document.getElementById("btnInvent").addEventListener("click", ()=>registerWord(false));
+
+document.getElementById("btnBackToWheel").addEventListener("click", ()=>{
+  state.top = null; state.bottom = null;
+  resetRoundUI();
+  goScreen("screen-rueda1");
+});
 
 document.getElementById("btnFinish").addEventListener("click", ()=>{
   const total = state.words.length;
